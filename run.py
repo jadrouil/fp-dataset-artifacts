@@ -1,8 +1,8 @@
 import datasets
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, \
     AutoModelForQuestionAnswering, Trainer, TrainingArguments, HfArgumentParser
-from helpers import prepare_dataset_nli, prepare_train_dataset_qa, \
-    prepare_validation_dataset_qa, QuestionAnsweringTrainer, compute_accuracy
+from helpers import prepare_train_dataset_qa, \
+    prepare_validation_dataset_qa, QuestionAnsweringTrainer
 import os
 import json
 
@@ -33,10 +33,10 @@ def main():
                       help="""This argument specifies the base model to fine-tune.
         This should either be a HuggingFace model ID (see https://huggingface.co/models)
         or a path to a saved model checkpoint (a folder containing config.json and pytorch_model.bin).""")
-    argp.add_argument('--task', type=str, choices=['nli', 'qa'], required=True,
+    argp.add_argument('--task', type=str, choices=['qa'], required=True,
                       help="""This argument specifies which task to train/evaluate on.
-        Pass "nli" for natural language inference or "qa" for question answering.
-        By default, "nli" will use the SNLI dataset, and "qa" will use the SQuAD dataset.""")
+        Pass "qa" for question answering.
+        By default, "qa" will use the SQuAD dataset.""")
     argp.add_argument('--dataset', type=str, default=None,
                       help="""This argument overrides the default dataset used for the specified task.""")
     argp.add_argument('--max_length', type=int, default=128,
@@ -50,10 +50,8 @@ def main():
     training_args, args = argp.parse_args_into_dataclasses()
 
     # Dataset selection
-    # IMPORTANT: this code path allows you to load custom datasets different from the standard SQuAD or SNLI ones.
-    # You need to format the dataset appropriately. For SNLI, you can prepare a file with each line containing one
-    # example as follows:
-    # {"premise": "Two women are embracing.", "hypothesis": "The sisters are hugging.", "label": 1}
+    # IMPORTANT: this code path allows you to load custom datasets different from the standard SQuAD.
+    # You need to format the dataset appropriately.
     if args.dataset.endswith('.json') or args.dataset.endswith('.jsonl'):
         dataset_id = None
         # Load from local json/jsonl file
@@ -63,20 +61,20 @@ def main():
         # from the loaded dataset
         eval_split = 'train'
     else:
-        default_datasets = {'qa': ('squad',), 'nli': ('snli',)}
+        default_datasets = {'qa': ('squad',)}
         dataset_id = tuple(args.dataset.split(':')) if args.dataset is not None else \
             default_datasets[args.task]
-        # MNLI has two validation splits (one with matched domains and one with mismatched domains). Most datasets just have one "validation" split
-        eval_split = 'validation_matched' if dataset_id == ('glue', 'mnli') else 'validation'
+
+        eval_split = 'validation'
         # Load the raw data
         dataset = datasets.load_dataset(*dataset_id)
     
-    # NLI models need to have the output label count specified (label 0 is "entailed", 1 is "neutral", and 2 is "contradiction")
-    task_kwargs = {'num_labels': 3} if args.task == 'nli' else {}
+
+    task_kwargs = {}
 
     # Here we select the right model fine-tuning head
     model_classes = {'qa': AutoModelForQuestionAnswering,
-                     'nli': AutoModelForSequenceClassification}
+                     }
     model_class = model_classes[args.task]
     # Initialize the model and tokenizer from the specified pretrained model/checkpoint
     model = model_class.from_pretrained(args.model, **task_kwargs)
@@ -86,17 +84,10 @@ def main():
     if args.task == 'qa':
         prepare_train_dataset = lambda exs: prepare_train_dataset_qa(exs, tokenizer)
         prepare_eval_dataset = lambda exs: prepare_validation_dataset_qa(exs, tokenizer)
-    elif args.task == 'nli':
-        prepare_train_dataset = prepare_eval_dataset = \
-            lambda exs: prepare_dataset_nli(exs, tokenizer, args.max_length)
-        # prepare_eval_dataset = prepare_dataset_nli
     else:
         raise ValueError('Unrecognized task name: {}'.format(args.task))
 
     print("Preprocessing data... (this takes a little bit, should only happen once per dataset)")
-    if dataset_id == ('snli',):
-        # remove SNLI examples with no label
-        dataset = dataset.filter(lambda ex: ex['label'] != -1)
     
     train_dataset = None
     eval_dataset = None
@@ -137,8 +128,6 @@ def main():
         metric = datasets.load_metric('squad')
         compute_metrics = lambda eval_preds: metric.compute(
             predictions=eval_preds.predictions, references=eval_preds.label_ids)
-    elif args.task == 'nli':
-        compute_metrics = compute_accuracy
     
 
     # This function wraps the compute_metrics function, storing the model's predictions
