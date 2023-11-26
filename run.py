@@ -83,7 +83,7 @@ def main():
             print(f"Filtered data set size: {len(dataset)}")
         elif args.sample_training_data:
             print(f"Sampling training data randomly: {len(dataset)}")
-            filter_set = set(np.random.choice(len(dataset), len(dataset)/3))
+            filter_set = set(np.random.choice(len(dataset), len(dataset)/3, replace=False))
             dataset = dataset.filter(lambda row: row["row_idx"] in filter_set)
             print(f"Sampled training data randomly: {len(dataset)}")
         else:
