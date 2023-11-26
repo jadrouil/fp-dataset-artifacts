@@ -163,9 +163,15 @@ def main():
     # Train and/or evaluate
     if training_args.do_train:
         trainer.train()
-        output_cartography = [list(v["loss"]) for v in carto.values()]
+        output_cartography = [
+            {
+                "losses": list(v["loss"]),
+            } for v in carto.values()]
         with open(os.path.join(training_args.output_dir, 'cartography.json'), encoding='utf-8', mode='w') as f:
             json.dump(output_cartography, f)
+
+
+        train_dataset_featurized.save_to_disk(os.path.join(training_args.output_dir, 'training_data.hf'))
         trainer.save_model()
         # If you want to customize the way the loss is computed, you should subclass Trainer and override the "compute_loss"
         # method (see https://huggingface.co/transformers/_modules/transformers/trainer.html#Trainer.compute_loss).
