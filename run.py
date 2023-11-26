@@ -112,7 +112,8 @@ def main():
             remove_columns=train_dataset.column_names
         )
         train_dataset_featurized = train_dataset_featurized.add_column("row_idx", np.arange(len(train_dataset_featurized)))
-        train_dataset_featurized = train_dataset_featurized.filter(lambda row: row["row_idx"] < 2)
+        # TODO: FILTER the dataset consistently based on cartography outputs. 
+        # train_dataset_featurized = train_dataset_featurized.filter(lambda row: row["row_idx"] < 2)
         training_args.remove_unused_columns = False
 
     if training_args.do_eval:
