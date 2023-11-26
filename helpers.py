@@ -1,9 +1,11 @@
 import numpy as np
 import collections
 from collections import defaultdict, OrderedDict
+import torch
+from torch import nn
 from transformers import Trainer, EvalPrediction
 from transformers.trainer_utils import PredictionOutput
-from typing import Tuple
+from typing import Any, Dict, Tuple, Union
 from tqdm.auto import tqdm
 
 QA_MAX_ANSWER_LENGTH = 30

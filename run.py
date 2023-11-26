@@ -1,10 +1,14 @@
 import datasets
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, \
-    AutoModelForQuestionAnswering, Trainer, TrainingArguments, HfArgumentParser
+    AutoModelForQuestionAnswering, Trainer, TrainingArguments, HfArgumentParser, TrainerCallback
 from helpers import prepare_train_dataset_qa, \
     prepare_validation_dataset_qa, QuestionAnsweringTrainer
 import os
 import json
+import numpy as np
+import types
+
+from electra_squad_dataset_cartography import MakeElectraSQUADCartography
 
 NUM_PREPROCESSING_WORKERS = 2
 
@@ -77,7 +81,11 @@ def main():
                      }
     model_class = model_classes[args.task]
     # Initialize the model and tokenizer from the specified pretrained model/checkpoint
+    
     model = model_class.from_pretrained(args.model, **task_kwargs)
+    carto, new_forward = MakeElectraSQUADCartography()
+    model.forward = types.MethodType(new_forward, model)
+
     tokenizer = AutoTokenizer.from_pretrained(args.model, use_fast=True)
 
     # Select the dataset preprocessing function (these functions are defined in helpers.py)
@@ -97,12 +105,16 @@ def main():
         train_dataset = dataset['train']
         if args.max_train_samples:
             train_dataset = train_dataset.select(range(args.max_train_samples))
-        train_dataset_featurized = train_dataset.map(
+        train_dataset_featurized: dataset = train_dataset.map(
             prepare_train_dataset,
             batched=True,
             num_proc=NUM_PREPROCESSING_WORKERS,
             remove_columns=train_dataset.column_names
         )
+        train_dataset_featurized = train_dataset_featurized.add_column("row_idx", np.arange(len(train_dataset_featurized)))
+        train_dataset_featurized = train_dataset_featurized.filter(lambda row: row["row_idx"] < 2)
+        training_args.remove_unused_columns = False
+
     if training_args.do_eval:
         eval_dataset = dataset[eval_split]
         if args.max_eval_samples:
@@ -150,6 +162,9 @@ def main():
     # Train and/or evaluate
     if training_args.do_train:
         trainer.train()
+        output_cartography = [list(v["loss"]) for v in carto.values()]
+        with open(os.path.join(training_args.output_dir, 'cartography.json'), encoding='utf-8', mode='w') as f:
+            json.dump(output_cartography, f)
         trainer.save_model()
         # If you want to customize the way the loss is computed, you should subclass Trainer and override the "compute_loss"
         # method (see https://huggingface.co/transformers/_modules/transformers/trainer.html#Trainer.compute_loss).
