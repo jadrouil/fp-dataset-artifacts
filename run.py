@@ -3,6 +3,7 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification, \
     AutoModelForQuestionAnswering, Trainer, TrainingArguments, HfArgumentParser, TrainerCallback
 from helpers import prepare_train_dataset_qa, \
     prepare_validation_dataset_qa, QuestionAnsweringTrainer
+
 import os
 import json
 import numpy as np
@@ -50,12 +51,18 @@ def main():
                       help='Limit the number of examples to train on.')
     argp.add_argument('--max_eval_samples', type=int, default=None,
                       help='Limit the number of examples to evaluate on.')
+    
+    argp.add_argument('--sample_training_data', type=bool, default=False, help="Whether to use 1/3 of the training data.")
+    argp.add_argument('--filter_training_data', type=str, default="", help="If specified, the json list of bools parallel to dataset indicating inclusion in training set.")
+
 
     training_args, args = argp.parse_args_into_dataclasses()
 
     # Dataset selection
     # IMPORTANT: this code path allows you to load custom datasets different from the standard SQuAD.
     # You need to format the dataset appropriately.
+
+    reloaded_data = False
     if args.dataset.endswith('.json') or args.dataset.endswith('.jsonl'):
         dataset_id = None
         # Load from local json/jsonl file
@@ -64,6 +71,23 @@ def main():
         # so if we want to use a jsonl file for evaluation we need to get the "train" split
         # from the loaded dataset
         eval_split = 'train'
+    elif args.dataset.endswith('.hf'):
+        reloaded_data = True
+        dataset = datasets.load_dataset(path=args.dataset)
+        if args.filter_training_data != "":
+            print("Filtering training data")
+            filter_list = []
+            with open(args.filter_training_data, mode="r") as f:
+                filter_list = json.loads(f.read())
+            dataset = dataset.filter(lambda row: filter_list[row["row_idx"]])
+            print(f"Filtered data set size: {len(dataset)}")
+        elif args.sample_training_data:
+            print(f"Sampling training data randomly: {len(dataset)}")
+            filter_set = set(np.random.choice(len(dataset), len(dataset)/3))
+            dataset = dataset.filter(lambda row: row["row_idx"] in filter_set)
+            print(f"Sampled training data randomly: {len(dataset)}")
+        else:
+            raise Exception("Reloading data but not filtering is not supported.")
     else:
         default_datasets = {'qa': ('squad',)}
         dataset_id = tuple(args.dataset.split(':')) if args.dataset is not None else \
@@ -97,11 +121,11 @@ def main():
 
     print("Preprocessing data... (this takes a little bit, should only happen once per dataset)")
     
-    train_dataset = None
+    train_dataset = dataset
     eval_dataset = None
     train_dataset_featurized = None
     eval_dataset_featurized = None
-    if training_args.do_train:
+    if training_args.do_train and reloaded_data:
         train_dataset = dataset['train']
         if args.max_train_samples:
             train_dataset = train_dataset.select(range(args.max_train_samples))
