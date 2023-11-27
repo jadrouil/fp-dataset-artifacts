@@ -84,7 +84,7 @@ def main():
             print(f"Filtered data set size: {len(dataset)}")
         elif args.sample_training_data:
             print(f"Sampling training data randomly: {len(dataset)}")
-            filter_set = set(np.random.choice(len(dataset), len(dataset)/3, replace=False))
+            filter_set = set(np.random.choice(len(dataset), max(len(dataset)/3, 1), replace=False))
             dataset = dataset.filter(lambda row: row["row_idx"] in filter_set)
             print(f"Sampled training data randomly: {len(dataset)}")
         else:
@@ -126,7 +126,8 @@ def main():
     eval_dataset = None
     train_dataset_featurized = dataset
     eval_dataset_featurized = None
-    if training_args.do_train and reloaded_data:
+    training_args.remove_unused_columns = False
+    if training_args.do_train and not reloaded_data:
         train_dataset = dataset['train']
         if args.max_train_samples:
             train_dataset = train_dataset.select(range(args.max_train_samples))
@@ -137,9 +138,8 @@ def main():
             remove_columns=train_dataset.column_names
         )
         train_dataset_featurized = train_dataset_featurized.add_column("row_idx", np.arange(len(train_dataset_featurized)))
-        # TODO: FILTER the dataset consistently based on cartography outputs. 
         # train_dataset_featurized = train_dataset_featurized.filter(lambda row: row["row_idx"] < 2)
-        training_args.remove_unused_columns = False
+        
 
     if training_args.do_eval:
         eval_dataset = dataset[eval_split]
