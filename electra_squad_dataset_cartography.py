@@ -36,7 +36,6 @@ def MakeElectraSQUADCartography():
             are not taken into account for computing the loss.
         """
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
-
         discriminator_hidden_states = self.electra(
             input_ids,
             attention_mask=attention_mask,

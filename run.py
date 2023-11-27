@@ -109,7 +109,8 @@ def main():
     
     model = model_class.from_pretrained(args.model, **task_kwargs)
     carto, new_forward = MakeElectraSQUADCartography()
-    model.forward = types.MethodType(new_forward, model)
+    if training_args.do_train:
+        model.forward = types.MethodType(new_forward, model)
 
     tokenizer = AutoTokenizer.from_pretrained(args.model, use_fast=True)
 
@@ -122,12 +123,12 @@ def main():
 
     print("Preprocessing data... (this takes a little bit, should only happen once per dataset)")
     
-    train_dataset = dataset
+    train_dataset = None
     eval_dataset = None
     train_dataset_featurized = dataset
     eval_dataset_featurized = None
-    training_args.remove_unused_columns = False
     if training_args.do_train and not reloaded_data:
+        training_args.remove_unused_columns = False
         train_dataset = dataset['train']
         if args.max_train_samples:
             train_dataset = train_dataset.select(range(args.max_train_samples))
