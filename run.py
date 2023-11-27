@@ -73,7 +73,8 @@ def main():
         eval_split = 'train'
     elif args.dataset.endswith('.hf'):
         reloaded_data = True
-        dataset = datasets.load_dataset(path=args.dataset)
+        dataset = datasets.load_from_disk(dataset_path=args.dataset)
+        print("dataset size", len(dataset))
         if args.filter_training_data != "":
             print("Filtering training data")
             filter_list = []
