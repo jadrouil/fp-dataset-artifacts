@@ -123,7 +123,7 @@ def main():
     
     train_dataset = dataset
     eval_dataset = None
-    train_dataset_featurized = None
+    train_dataset_featurized = dataset
     eval_dataset_featurized = None
     if training_args.do_train and reloaded_data:
         train_dataset = dataset['train']
