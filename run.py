@@ -132,14 +132,18 @@ def main():
         train_dataset = dataset['train']
         if args.max_train_samples:
             train_dataset = train_dataset.select(range(args.max_train_samples))
-        train_dataset_featurized: dataset = train_dataset.map(
+        print("PREPARING", train_dataset.column_names)
+        ds = train_dataset.map(
             prepare_train_dataset,
             batched=True,
             num_proc=NUM_PREPROCESSING_WORKERS,
-            remove_columns=train_dataset.column_names
+            remove_columns=["context", "question", "answers", "title", "id"]
         )
-        train_dataset_featurized = train_dataset_featurized.add_column("row_idx", np.arange(len(train_dataset_featurized)))
-        # train_dataset_featurized = train_dataset_featurized.filter(lambda row: row["row_idx"] < 2)
+        ds2 = ds.add_column("row_idx", np.arange(len(ds)))
+        print("PREPARED", ds2.column_names, ds2[0])
+        # ds3 = ds2.filter(lambda row: row["row_idx"] < 2)
+        ds2.save_to_disk(os.path.join(training_args.output_dir, 'training_data.hf'))
+        return
         
 
     if training_args.do_eval:

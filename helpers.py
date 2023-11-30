@@ -7,6 +7,7 @@ from transformers import Trainer, EvalPrediction
 from transformers.trainer_utils import PredictionOutput
 from typing import Any, Dict, Tuple, Union
 from tqdm.auto import tqdm
+from transformers.tokenization_utils_base import BatchEncoding
 
 QA_MAX_ANSWER_LENGTH = 30
 
@@ -32,7 +33,7 @@ def prepare_train_dataset_qa(examples, tokenizer, max_seq_length=None):
     # tokenize both questions and the corresponding context
     # if the context length is longer than max_length, we split it to several
     # chunks of max_length
-    tokenized_examples = tokenizer(
+    tokenized_examples: BatchEncoding = tokenizer(
         questions,
         examples["context"],
         truncation="only_second",
@@ -53,7 +54,7 @@ def prepare_train_dataset_qa(examples, tokenizer, max_seq_length=None):
 
     tokenized_examples["start_positions"] = []
     tokenized_examples["end_positions"] = []
-
+    titles = []
     for i, offsets in enumerate(offset_mapping):
         input_ids = tokenized_examples["input_ids"][i]
         # We will label features not containing the answer the index of the CLS token.
@@ -63,7 +64,7 @@ def prepare_train_dataset_qa(examples, tokenizer, max_seq_length=None):
         sample_index = sample_mapping[i]
         # get the answer for a feature
         answers = examples["answers"][sample_index]
-
+        titles.append(examples["title"][sample_index])
         if len(answers["answer_start"]) == 0:
             tokenized_examples["start_positions"].append(cls_index)
             tokenized_examples["end_positions"].append(cls_index)
@@ -98,7 +99,7 @@ def prepare_train_dataset_qa(examples, tokenizer, max_seq_length=None):
                 while offsets[token_end_index][1] >= end_char:
                     token_end_index -= 1
                 tokenized_examples["end_positions"].append(token_end_index + 1)
-
+    tokenized_examples.update({"titles": titles})
     return tokenized_examples
 
 
