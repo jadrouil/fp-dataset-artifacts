@@ -90,10 +90,10 @@ def main():
         else:
             raise Exception("Reloading data but not filtering is not supported.")
         
-        print("Original len", len(dataset))
-        # Triple the dataset to match the length of the full dataset.
-        dataset = datasets.concatenate_datasets([dataset, dataset, dataset])
-        print("after len", len(dataset))
+        # print("Original len", len(dataset))
+        # # Triple the dataset to match the length of the full dataset.
+        # # dataset = datasets.concatenate_datasets([dataset, dataset, dataset])
+        # print("after len", len(dataset))
     else:
         default_datasets = {'qa': ('squad',)}
         dataset_id = tuple(args.dataset.split(':')) if args.dataset is not None else \
