@@ -89,6 +89,11 @@ def main():
             print(f"Sampled training data randomly: {len(dataset)}")
         else:
             raise Exception("Reloading data but not filtering is not supported.")
+        
+        print("Original len", len(dataset))
+        # Triple the dataset to match the length of the full dataset.
+        dataset = datasets.concatenate_datasets([dataset, dataset, dataset])
+        print("after len", len(dataset))
     else:
         default_datasets = {'qa': ('squad',)}
         dataset_id = tuple(args.dataset.split(':')) if args.dataset is not None else \
@@ -132,7 +137,6 @@ def main():
         train_dataset = dataset['train']
         if args.max_train_samples:
             train_dataset = train_dataset.select(range(args.max_train_samples))
-        print("PREPARING", train_dataset.column_names)
         ds = train_dataset.map(
             prepare_train_dataset,
             batched=True,
@@ -140,10 +144,9 @@ def main():
             remove_columns=["context", "question", "answers", "title", "id"]
         )
         ds2 = ds.add_column("row_idx", np.arange(len(ds)))
-        print("PREPARED", ds2.column_names, ds2[0])
         # ds3 = ds2.filter(lambda row: row["row_idx"] < 2)
         ds2.save_to_disk(os.path.join(training_args.output_dir, 'training_data.hf'))
-        return
+        train_dataset_featurized = ds2
         
 
     if training_args.do_eval:
