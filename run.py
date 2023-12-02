@@ -94,6 +94,12 @@ def main():
         # # Triple the dataset to match the length of the full dataset.
         # # dataset = datasets.concatenate_datasets([dataset, dataset, dataset])
         # print("after len", len(dataset))
+    elif ":" in args.dataset:
+        ds = args.dataset.split(":")
+        dataset = datasets.load_dataset(*ds)
+        # print("dataset", dataset)
+        eval_split = "validation"
+
     else:
         default_datasets = {'qa': ('squad',)}
         dataset_id = tuple(args.dataset.split(':')) if args.dataset is not None else \
