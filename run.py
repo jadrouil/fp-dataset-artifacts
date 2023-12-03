@@ -88,7 +88,7 @@ def main():
             dataset = dataset.filter(lambda row: row["row_idx"] in filter_set)
             print(f"Sampled training data randomly: {len(dataset)}")
         else:
-            raise Exception("Reloading data but not filtering is not supported.")
+            print("Reloading data but not filtering.")
         
         # print("Original len", len(dataset))
         # # Triple the dataset to match the length of the full dataset.
